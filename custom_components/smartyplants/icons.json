@@ -1,0 +1,32 @@
+{
+  "entity": {
+    "sensor": {
+      "moisture": {
+        "default": "mdi:water-percent"
+      },
+      "light_quality": {
+        "default": "mdi:white-balance-sunny"
+      },
+      "health_score": {
+        "default": "mdi:heart-pulse"
+      },
+      "fertilise_days": {
+        "default": "mdi:nutrition"
+      },
+      "last_reported": {
+        "default": "mdi:clock-outline"
+      },
+      "status": {
+        "default": "mdi:information-outline"
+      }
+    },
+    "binary_sensor": {
+      "needs_attention": {
+        "default": "mdi:alert-circle-outline"
+      },
+      "stale": {
+        "default": "mdi:clock-alert-outline"
+      }
+    }
+  }
+}

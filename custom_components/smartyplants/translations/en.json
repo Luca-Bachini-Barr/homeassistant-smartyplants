@@ -1,0 +1,116 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect SmartyPlants",
+        "description": "Enter your SmartyPlants API key. You can create one in the SmartyPlants app under Settings.",
+        "data": {
+          "host": "Server",
+          "api_key": "API key"
+        },
+        "data_description": {
+          "host": "The SmartyPlants server to connect to. Leave the default unless you were given a different address.",
+          "api_key": "Create this in the SmartyPlants app, under Settings. It identifies your account to Home Assistant."
+        }
+      },
+      "webhook": {
+        "title": "Enable live updates",
+        "description": "Optional: for instant updates instead of polling every 10 minutes, add this webhook URL in the SmartyPlants app, then paste the signing secret it gives you below.\n\n`{webhook_url}`\n\nLeave the secret empty to use polling only.",
+        "data": {
+          "webhook_secret": "Webhook secret"
+        },
+        "data_description": {
+          "webhook_secret": "The signing secret the SmartyPlants app shows after you add the webhook URL. It is used to verify that pushed updates really came from SmartyPlants."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reconnect SmartyPlants",
+        "description": "Your SmartyPlants API key is no longer valid. Enter a new one to reconnect.",
+        "data": {
+          "api_key": "API key"
+        },
+        "data_description": {
+          "api_key": "Create a replacement key in the SmartyPlants app, under Settings."
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure SmartyPlants",
+        "description": "Change the server or API key used for this SmartyPlants account.",
+        "data": {
+          "host": "Server",
+          "api_key": "API key"
+        },
+        "data_description": {
+          "host": "The SmartyPlants server to connect to. Leave the default unless you were given a different address.",
+          "api_key": "The API key created in the SmartyPlants app, under Settings."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach the SmartyPlants server. Check the address and your internet connection.",
+      "invalid_auth": "That API key was rejected. Check it and try again."
+    },
+    "abort": {
+      "already_configured": "This SmartyPlants account is already set up.",
+      "reauth_successful": "SmartyPlants reconnected successfully.",
+      "account_mismatch": "That API key belongs to a different SmartyPlants account. Use a key for the account already set up, or add the other account separately.",
+      "reconfigure_successful": "SmartyPlants reconfigured successfully."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "moisture": {
+        "name": "Soil moisture"
+      },
+      "light_quality": {
+        "name": "Light quality"
+      },
+      "health_score": {
+        "name": "Health score"
+      },
+      "fertilise_days": {
+        "name": "Fertilise in"
+      },
+      "last_reported": {
+        "name": "Last reported"
+      },
+      "status": {
+        "name": "Status",
+        "state": {
+          "ok": "OK",
+          "no_sensor": "Add a sensor in the app",
+          "no_plant": "Add a plant in the app",
+          "waiting_for_data": "Waiting for first readings",
+          "offline": "Sensor offline",
+          "outdated": "Readings outdated"
+        }
+      }
+    },
+    "binary_sensor": {
+      "stale": {
+        "name": "Readings outdated"
+      },
+      "needs_attention": {
+        "name": "Needs attention"
+      }
+    }
+  },
+  "exceptions": {
+    "invalid_auth": {
+      "message": "The SmartyPlants API key was rejected. Enter a new one to reconnect."
+    },
+    "cannot_connect": {
+      "message": "Could not reach SmartyPlants: {error}"
+    }
+  },
+  "issues": {
+    "plant_without_sensor": {
+      "title": "{name} has no sensor",
+      "description": "The plant \"{name}\" has no SmartyPlants sensor attached, so it cannot report any readings. Attach a sensor to it in the SmartyPlants app. Readings appear here a few minutes later."
+    },
+    "sensor_without_plant": {
+      "title": "{name} is not assigned to a plant",
+      "description": "The sensor \"{name}\" is not assigned to a plant, so its readings cannot be scored against a species. Assign it to a plant in the SmartyPlants app. Readings appear here a few minutes later."
+    }
+  }
+}
