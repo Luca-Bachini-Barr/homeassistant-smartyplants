@@ -13,7 +13,7 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/smartyplantstech/homeassistant-smartyplants/issues",
   "requirements": [
-    "pysmartyplants==0.1.0"
+    "pysmartyplants @ git+https://github.com/smartyplantstech/pysmartyplants.git@main"
   ],
   "version": "0.1.0"
 }
