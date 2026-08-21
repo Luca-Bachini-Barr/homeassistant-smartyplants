@@ -10,6 +10,11 @@ the soil dries out, a grow light when the day has been dim.
 
 ## Install
 
+**New to Home Assistant?** Start with the [full installation guide](docs/INSTALL.md),
+which covers setting up Home Assistant itself, then HACS, then this integration.
+
+Already running Home Assistant with HACS? Continue below.
+
 ### HACS (recommended)
 
 1. In HACS, open the three-dot menu → **Custom repositories**
