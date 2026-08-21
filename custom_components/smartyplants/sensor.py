@@ -33,12 +33,34 @@ from .entity import SmartyPlantsEntity, async_setup_dynamic_entities
 PARALLEL_UPDATES = 0
 
 
+def _numeric(value: Any) -> int | float | None:
+    """Return the value only when it is genuinely a number.
+
+    The backend can send a placeholder such as "-" for a metric it could not
+    compute. Home Assistant refuses a non-numeric state on a measurement
+    entity and raises, so anything unparseable becomes unknown instead.
+
+    Numbers are returned as they arrived, so an integer reading is not
+    reported as a float.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return value
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return None
+    return None
+
+
 def _reading(sensor: dict[str, Any], key: str) -> float | None:
     """Pull a numeric reading, withholding it while the metric is calculating."""
     block = (sensor.get("readings") or {}).get(key) or {}
     if block.get("isCalculating"):
         return None
-    return block.get("value")
+    return _numeric(block.get("value"))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -104,7 +126,7 @@ SENSOR_TYPES: tuple[SmartyPlantsSensorDescription, ...] = (
         translation_key="health_score",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
-        value_fn=lambda sensor: (sensor.get("health") or {}).get("score"),
+        value_fn=lambda sensor: _numeric((sensor.get("health") or {}).get("score")),
     ),
     SmartyPlantsSensorDescription(
         key="fertilise_days",
@@ -116,8 +138,10 @@ SENSOR_TYPES: tuple[SmartyPlantsSensorDescription, ...] = (
             if ((sensor.get("readings") or {}).get("fertiliser") or {}).get(
                 "isCalculating"
             )
-            else ((sensor.get("readings") or {}).get("fertiliser") or {}).get(
-                "daysUntilFertilise"
+            else _numeric(
+                ((sensor.get("readings") or {}).get("fertiliser") or {}).get(
+                    "daysUntilFertilise"
+                )
             )
         ),
     ),
@@ -130,9 +154,11 @@ SENSOR_TYPES: tuple[SmartyPlantsSensorDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         entity_category=EntityCategory.DIAGNOSTIC,
         stale_sensitive=False,
-        value_fn=lambda sensor: (
-            (sensor.get("readings") or {}).get("battery") or {}
-        ).get("value", sensor.get("batteryPercentage")),
+        value_fn=lambda sensor: _numeric(
+            ((sensor.get("readings") or {}).get("battery") or {}).get(
+                "value", sensor.get("batteryPercentage")
+            )
+        ),
     ),
     SmartyPlantsSensorDescription(
         key="status",
