@@ -81,6 +81,7 @@ SENSOR_TYPES: tuple[SmartyPlantsSensorDescription, ...] = (
     SmartyPlantsSensorDescription(
         key="temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
+        suggested_display_precision=1,
         state_class=SensorStateClass.MEASUREMENT,
         # The backend honours the user's preferred unit, so read it per update.
         unit_fn=lambda sensor: (
@@ -94,6 +95,7 @@ SENSOR_TYPES: tuple[SmartyPlantsSensorDescription, ...] = (
     SmartyPlantsSensorDescription(
         key="humidity",
         device_class=SensorDeviceClass.HUMIDITY,
+        suggested_display_precision=0,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
         value_fn=lambda sensor: _reading(sensor, "humidity"),
@@ -102,6 +104,7 @@ SENSOR_TYPES: tuple[SmartyPlantsSensorDescription, ...] = (
         key="moisture",
         translation_key="moisture",
         device_class=SensorDeviceClass.MOISTURE,
+        suggested_display_precision=0,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
         value_fn=lambda sensor: _reading(sensor, "moisture"),
@@ -109,6 +112,7 @@ SENSOR_TYPES: tuple[SmartyPlantsSensorDescription, ...] = (
     SmartyPlantsSensorDescription(
         key="light",
         device_class=SensorDeviceClass.ILLUMINANCE,
+        suggested_display_precision=0,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=LIGHT_LUX,
         value_fn=lambda sensor: _reading(sensor, "light"),
@@ -116,6 +120,7 @@ SENSOR_TYPES: tuple[SmartyPlantsSensorDescription, ...] = (
     SmartyPlantsSensorDescription(
         key="light_quality",
         translation_key="light_quality",
+        suggested_display_precision=0,
         readings_key="lightQuality",
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
@@ -124,6 +129,7 @@ SENSOR_TYPES: tuple[SmartyPlantsSensorDescription, ...] = (
     SmartyPlantsSensorDescription(
         key="health_score",
         translation_key="health_score",
+        suggested_display_precision=0,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
         value_fn=lambda sensor: _numeric((sensor.get("health") or {}).get("score")),
@@ -131,6 +137,7 @@ SENSOR_TYPES: tuple[SmartyPlantsSensorDescription, ...] = (
     SmartyPlantsSensorDescription(
         key="fertilise_days",
         translation_key="fertilise_days",
+        suggested_display_precision=0,
         readings_key="fertiliser",
         native_unit_of_measurement=UnitOfTime.DAYS,
         value_fn=lambda sensor: (
@@ -150,6 +157,7 @@ SENSOR_TYPES: tuple[SmartyPlantsSensorDescription, ...] = (
     SmartyPlantsSensorDescription(
         key="battery",
         device_class=SensorDeviceClass.BATTERY,
+        suggested_display_precision=0,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
         entity_category=EntityCategory.DIAGNOSTIC,
