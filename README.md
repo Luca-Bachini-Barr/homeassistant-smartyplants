@@ -89,3 +89,11 @@ reload or restart needed.
 
 - Home Assistant 2026.8.0 or newer
 - A SmartyPlants account with an API key
+
+## Licence
+
+Apache License 2.0, the same licence Home Assistant uses for integration code
+contributed to core. See [LICENSE](LICENSE).
+
+The `pysmartyplants` client library this depends on is published separately
+under the MIT licence.
