@@ -5,11 +5,13 @@ from typing import Final
 
 DOMAIN: Final = "smartyplants"
 
-DEFAULT_HOST: Final = "https://api.smartyplants.com"
+DEFAULT_HOST: Final = "https://api.smartyplants.ai"
 
 # Poll interval used as the baseline. Webhook pushes land in between and keep
-# the data fresher than this without changing the fallback cadence.
-DEFAULT_SCAN_INTERVAL: Final = timedelta(minutes=10)
+# the data fresher than this without changing the fallback cadence. The
+# backend caches each account's payload and answers unchanged polls with a
+# 304, so a poll that finds nothing new is cheap.
+DEFAULT_SCAN_INTERVAL: Final = timedelta(minutes=1)
 
 # Key prefix for plants that have no sensor attached. Sensor-backed devices are
 # keyed by sensor id, so the prefix keeps the two namespaces apart.

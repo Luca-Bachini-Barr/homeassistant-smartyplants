@@ -43,7 +43,7 @@ app.
 
 ## Live updates
 
-By default the integration polls every 10 minutes. For updates the moment a
+By default the integration polls every minute. For updates the moment a
 sensor reports:
 
 1. Copy the webhook URL shown on the second step of setup

@@ -3,19 +3,17 @@
     "step": {
       "user": {
         "title": "Connect SmartyPlants",
-        "description": "Enter your SmartyPlants API key. You can create one in the SmartyPlants app under Settings.",
+        "description": "Enter the API key from the SmartyPlants app, under Settings.",
         "data": {
-          "host": "Server",
           "api_key": "API key"
         },
         "data_description": {
-          "host": "The SmartyPlants server to connect to. Leave the default unless you were given a different address.",
           "api_key": "Create this in the SmartyPlants app, under Settings. It identifies your account to Home Assistant."
         }
       },
       "webhook": {
         "title": "Enable live updates",
-        "description": "Optional: for instant updates instead of polling every 10 minutes, add this webhook URL in the SmartyPlants app, then paste the signing secret it gives you below.\n\n`{webhook_url}`\n\nLeave the secret empty to use polling only.",
+        "description": "Optional: for instant updates instead of polling every minute, add this webhook URL in the SmartyPlants app, then paste the signing secret it gives you below.\n\n`{webhook_url}`\n\nLeave the secret empty to use polling only.",
         "data": {
           "webhook_secret": "Webhook secret"
         },
@@ -35,13 +33,11 @@
       },
       "reconfigure": {
         "title": "Reconfigure SmartyPlants",
-        "description": "Change the server or API key used for this SmartyPlants account.",
+        "description": "Enter a new API key for this SmartyPlants account.",
         "data": {
-          "host": "Server",
           "api_key": "API key"
         },
         "data_description": {
-          "host": "The SmartyPlants server to connect to. Leave the default unless you were given a different address.",
           "api_key": "The API key created in the SmartyPlants app, under Settings."
         }
       }

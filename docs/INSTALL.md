@@ -125,7 +125,7 @@ room matching its environment in the app.
 
 ### Optional: live updates
 
-By default Home Assistant checks for new readings every 10 minutes. To have them
+By default Home Assistant checks for new readings every minute. To have them
 arrive the moment a sensor reports:
 
 1. On the second step of setup, copy the **webhook URL** shown
@@ -133,7 +133,7 @@ arrive the moment a sensor reports:
 3. Paste the **signing secret** the app gives you back, into the same dialog
 
 Leaving the secret empty is perfectly fine — it just means readings arrive on the
-10-minute schedule. Live updates also require your Home Assistant to be
+one-minute schedule. Live updates also require your Home Assistant to be
 reachable from the internet.
 
 ---

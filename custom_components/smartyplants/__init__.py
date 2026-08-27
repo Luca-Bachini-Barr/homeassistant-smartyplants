@@ -6,6 +6,7 @@ from homeassistant.const import CONF_API_KEY, CONF_HOST, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
+from .const import DEFAULT_HOST
 from .coordinator import SmartyPlantsConfigEntry, SmartyPlantsCoordinator
 from .webhook import async_register_webhook, async_unregister_webhook
 
@@ -18,7 +19,7 @@ async def async_setup_entry(
     """Set up SmartyPlants from a config entry."""
     client = SmartyPlantsClient(
         entry.data[CONF_API_KEY],
-        host=entry.data[CONF_HOST],
+        host=entry.data.get(CONF_HOST, DEFAULT_HOST),
         session=async_get_clientsession(hass),
     )
 

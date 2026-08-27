@@ -16,12 +16,11 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import CONF_WEBHOOK_SECRET, DEFAULT_HOST, DOMAIN
 
-STEP_USER_SCHEMA = vol.Schema(
-    {
-        vol.Required(CONF_HOST, default=DEFAULT_HOST): str,
-        vol.Required(CONF_API_KEY): str,
-    }
-)
+# Everyone connects to the SmartyPlants service, so the address is never asked
+# for. Entries still carry it, which keeps existing installations working and
+# leaves one place to change when developing against another backend.
+CREDENTIALS_SCHEMA = vol.Schema({vol.Required(CONF_API_KEY): str})
+
 
 # The secret is optional: without it the integration still polls, it just
 # cannot verify pushes, so it refuses them.
@@ -60,8 +59,9 @@ class SmartyPlantsConfigFlow(ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
+            host = DEFAULT_HOST
             error, account_id = await self._async_validate(
-                user_input[CONF_HOST], user_input[CONF_API_KEY]
+                host, user_input[CONF_API_KEY]
             )
             if error:
                 errors["base"] = error
@@ -72,13 +72,16 @@ class SmartyPlantsConfigFlow(ConfigFlow, domain=DOMAIN):
                 self._abort_if_unique_id_configured()
 
                 self._data = {
-                    **user_input,
+                    CONF_API_KEY: user_input[CONF_API_KEY],
+                    CONF_HOST: host,
                     CONF_WEBHOOK_ID: hass_webhook.async_generate_id(),
                 }
                 return await self.async_step_webhook()
 
         return self.async_show_form(
-            step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors
+            step_id="user",
+            data_schema=CREDENTIALS_SCHEMA,
+            errors=errors,
         )
 
     async def async_step_webhook(
@@ -119,8 +122,9 @@ class SmartyPlantsConfigFlow(ConfigFlow, domain=DOMAIN):
         entry = self._get_reconfigure_entry()
 
         if user_input is not None:
+            host = DEFAULT_HOST
             error, account_id = await self._async_validate(
-                user_input[CONF_HOST], user_input[CONF_API_KEY]
+                host, user_input[CONF_API_KEY]
             )
             if error:
                 errors["base"] = error
@@ -129,13 +133,17 @@ class SmartyPlantsConfigFlow(ConfigFlow, domain=DOMAIN):
                 self._abort_if_unique_id_mismatch(reason="account_mismatch")
 
                 return self.async_update_reload_and_abort(
-                    entry, data_updates=user_input
+                    entry,
+                    data_updates={
+                        CONF_API_KEY: user_input[CONF_API_KEY],
+                        CONF_HOST: host,
+                    },
                 )
 
         return self.async_show_form(
             step_id="reconfigure",
             data_schema=self.add_suggested_values_to_schema(
-                STEP_USER_SCHEMA, entry.data
+                CREDENTIALS_SCHEMA, entry.data
             ),
             errors=errors,
         )
@@ -153,7 +161,7 @@ class SmartyPlantsConfigFlow(ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             error, account_id = await self._async_validate(
-                entry.data[CONF_HOST], user_input[CONF_API_KEY]
+                entry.data.get(CONF_HOST, DEFAULT_HOST), user_input[CONF_API_KEY]
             )
             if error:
                 errors["base"] = error
