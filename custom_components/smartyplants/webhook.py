@@ -86,6 +86,12 @@ async def async_register_webhook(
             _LOGGER.warning("Rejected webhook: sensor was not an object")
             return Response(status=400)
 
+        # The id is used as a dictionary key, so an unhashable one would raise
+        # rather than be rejected.
+        if sensor is not None and not isinstance(sensor.get("id"), (str, type(None))):
+            _LOGGER.warning("Rejected webhook: sensor id was not a string")
+            return Response(status=400)
+
         coordinator = entry.runtime_data
 
         if event in MERGE_EVENTS:
