@@ -77,12 +77,21 @@ async def async_register_webhook(
             return Response(status=400)
 
         event = payload.get("event")
+        if not isinstance(event, str):
+            _LOGGER.warning("Rejected webhook: event was not a string")
+            return Response(status=400)
+
+        sensor = payload.get("sensor")
+        if sensor is not None and not isinstance(sensor, dict):
+            _LOGGER.warning("Rejected webhook: sensor was not an object")
+            return Response(status=400)
+
         coordinator = entry.runtime_data
 
         if event in MERGE_EVENTS:
             coordinator.async_apply_webhook_payload(payload)
         elif event == EVENT_SENSOR_REMOVED:
-            if sensor_id := (payload.get("sensor") or {}).get("id"):
+            if sensor_id := (sensor or {}).get("id"):
                 coordinator.async_remove_sensor(sensor_id)
         else:
             # Unknown events are accepted and ignored so that adding new event

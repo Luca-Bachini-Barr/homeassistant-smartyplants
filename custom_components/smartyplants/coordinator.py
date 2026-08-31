@@ -334,7 +334,7 @@ class SmartyPlantsCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 "id": sensor_id,
                 "identifier": pushed.get("identifier", merged.get("identifier")),
                 "name": pushed.get("name", merged.get("name")),
-                "isOnline": pushed.get("isOnline", True),
+                "isOnline": pushed.get("isOnline", merged.get("isOnline", True)),
                 "batteryPercentage": pushed.get(
                     "batteryPercentage", merged.get("batteryPercentage")
                 ),

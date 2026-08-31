@@ -14,6 +14,7 @@ from homeassistant.components import webhook as hass_webhook
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_WEBHOOK_ID
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.network import NoURLAvailableError
 
 from .const import CONF_WEBHOOK_SECRET, DEFAULT_HOST, DOMAIN
 
@@ -105,14 +106,21 @@ class SmartyPlantsConfigFlow(ConfigFlow, domain=DOMAIN):
                 },
             )
 
+        try:
+            # SmartyPlants calls this from the internet, so an internal
+            # address would be useless to paste into the app.
+            webhook_url = hass_webhook.async_generate_url(
+                self.hass, self._data[CONF_WEBHOOK_ID], allow_internal=False
+            )
+        except NoURLAvailableError:
+            # Without a reachable address there is nothing to offer, so the
+            # entry is created and readings arrive on the poll instead.
+            return self.async_create_entry(title="SmartyPlants", data=self._data)
+
         return self.async_show_form(
             step_id="webhook",
             data_schema=STEP_WEBHOOK_SCHEMA,
-            description_placeholders={
-                "webhook_url": hass_webhook.async_generate_url(
-                    self.hass, self._data[CONF_WEBHOOK_ID]
-                )
-            },
+            description_placeholders={"webhook_url": webhook_url},
         )
 
     async def async_step_reconfigure(
