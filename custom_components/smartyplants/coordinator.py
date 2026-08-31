@@ -41,7 +41,14 @@ def last_reported(sensor: dict[str, Any]) -> datetime | None:
     if not raw:
         return None
 
-    parsed = dt_util.parse_datetime(raw) if isinstance(raw, str) else raw
+    # A pushed timestamp can be any JSON type, and anything that is not a
+    # string or datetime would raise on .tzinfo below.
+    if isinstance(raw, str):
+        parsed = dt_util.parse_datetime(raw)
+    elif isinstance(raw, datetime):
+        parsed = raw
+    else:
+        return None
     if parsed is None:
         return None
 
@@ -115,10 +122,15 @@ class SmartyPlantsCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             update_interval=DEFAULT_SCAN_INTERVAL,
         )
         self.client = client
+        # Bumped by every applied push. A poll that started before a push
+        # must not overwrite it with the older snapshot it fetched.
+        self._push_revision = 0
 
     @override
     async def _async_update_data(self) -> dict[str, dict[str, Any]]:
         """Poll the backend and key the sensors by id."""
+        revision = self._push_revision
+
         try:
             sensors = await self.client.async_get_sensors()
             plants = await self.client.async_get_plants()
@@ -132,6 +144,12 @@ class SmartyPlantsCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 translation_key="cannot_connect",
                 translation_placeholders={"error": str(err)},
             ) from err
+
+        if revision != self._push_revision and self.data is not None:
+            # A push landed while this poll was in flight, so it already holds
+            # newer readings than the response we just received. The next poll
+            # picks up anything this one would have added.
+            return self.data
 
         data = {sensor["id"]: sensor for sensor in sensors if sensor.get("id")}
 
@@ -249,6 +267,7 @@ class SmartyPlantsCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
 
         self._async_purge_removed_devices(data)
         self._async_sync_pairing_issues(data)
+        self._push_revision += 1
         self.async_set_updated_data(data)
 
     @callback
@@ -349,4 +368,5 @@ class SmartyPlantsCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         )
 
         data[sensor_id] = merged
+        self._push_revision += 1
         self.async_set_updated_data(data)
