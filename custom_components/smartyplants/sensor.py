@@ -1,6 +1,7 @@
 """Sensor entities for SmartyPlants."""
 
 from collections.abc import Callable
+from datetime import datetime
 from dataclasses import dataclass
 from typing import Any, override
 
@@ -19,6 +20,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.helpers.typing import StateType
 
 from .const import STATUS_OPTIONS
 from .coordinator import (
@@ -38,7 +40,7 @@ def _numeric(value: Any) -> int | float | None:
 
     The backend can send a placeholder such as "-" for a metric it could not
     compute. Home Assistant refuses a non-numeric state on a measurement
-    entity and raises, so anything unparseable becomes unknown instead.
+    entity and raises, so anything unparsable becomes unknown instead.
 
     Numbers are returned as they arrived, so an integer reading is not
     reported as a float.
@@ -67,7 +69,7 @@ def _reading(sensor: dict[str, Any], key: str) -> float | None:
 class SmartyPlantsSensorDescription(SensorEntityDescription):
     """Describes one SmartyPlants sensor entity."""
 
-    value_fn: Callable[[dict[str, Any]], Any]
+    value_fn: Callable[[dict[str, Any]], StateType | datetime]
     unit_fn: Callable[[dict[str, Any]], str | None] | None = None
     # Readings block backing this entity, when it differs from the entity key.
     readings_key: str | None = None
@@ -248,7 +250,7 @@ class SmartyPlantsSensor(SmartyPlantsEntity, SensorEntity):
 
     @property
     @override
-    def native_value(self) -> Any:
+    def native_value(self) -> StateType | datetime:
         """Return the current value for this metric."""
         return self.entity_description.value_fn(self.sensor)
 

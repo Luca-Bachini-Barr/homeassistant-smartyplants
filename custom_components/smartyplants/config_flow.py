@@ -1,5 +1,6 @@
 """Config flow for SmartyPlants — this is what replaces configuration.yaml."""
 
+from collections.abc import Mapping
 from typing import Any, override
 
 from pysmartyplants import (
@@ -148,7 +149,9 @@ class SmartyPlantsConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_reauth(self, entry_data: dict[str, Any]) -> ConfigFlowResult:
+    async def async_step_reauth(
+        self, entry_data: Mapping[str, Any]
+    ) -> ConfigFlowResult:
         """Start the re-auth prompt when the key stops working."""
         return await self.async_step_reauth_confirm()
 
