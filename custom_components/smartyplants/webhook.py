@@ -95,10 +95,10 @@ async def async_register_webhook(
         coordinator = entry.runtime_data
 
         if event in MERGE_EVENTS:
-            coordinator.async_apply_webhook_payload(payload)
+            await coordinator.async_apply_webhook_payload(payload)
         elif event == EVENT_SENSOR_REMOVED:
             if sensor_id := (sensor or {}).get("id"):
-                coordinator.async_remove_sensor(sensor_id)
+                await coordinator.async_remove_sensor(sensor_id)
         else:
             # Unknown events are accepted and ignored so that adding new event
             # types on the backend never breaks an older integration.

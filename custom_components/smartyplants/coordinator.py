@@ -1,5 +1,6 @@
 """Polling coordinator for SmartyPlants, with webhook push support."""
 
+import asyncio
 from datetime import datetime
 import logging
 from typing import Any, override
@@ -122,76 +123,70 @@ class SmartyPlantsCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             update_interval=DEFAULT_SCAN_INTERVAL,
         )
         self.client = client
-        # Bumped by every applied push. A poll that started before a push
-        # must not overwrite it with the older snapshot it fetched.
-        self._push_revision = 0
+        # Polls and pushes both write the cached sensors, so they take turns.
+        # Without this a push that arrived while a poll was in flight would be
+        # overwritten by the older readings that poll was about to store.
+        self._lock = asyncio.Lock()
 
     @override
     async def _async_update_data(self) -> dict[str, dict[str, Any]]:
         """Poll the backend and key the sensors by id."""
-        revision = self._push_revision
+        async with self._lock:
+            try:
+                sensors = await self.client.async_get_sensors()
+                plants = await self.client.async_get_plants()
+            except SmartyPlantsAuthError as err:
+                raise ConfigEntryAuthFailed(
+                    translation_domain=DOMAIN, translation_key="invalid_auth"
+                ) from err
+            except SmartyPlantsError as err:
+                raise UpdateFailed(
+                    translation_domain=DOMAIN,
+                    translation_key="cannot_connect",
+                    translation_placeholders={"error": str(err)},
+                ) from err
 
-        try:
-            sensors = await self.client.async_get_sensors()
-            plants = await self.client.async_get_plants()
-        except SmartyPlantsAuthError as err:
-            raise ConfigEntryAuthFailed(
-                translation_domain=DOMAIN, translation_key="invalid_auth"
-            ) from err
-        except SmartyPlantsError as err:
-            raise UpdateFailed(
-                translation_domain=DOMAIN,
-                translation_key="cannot_connect",
-                translation_placeholders={"error": str(err)},
-            ) from err
+            data = {sensor["id"]: sensor for sensor in sensors if sensor.get("id")}
 
-        if revision != self._push_revision and self.data is not None:
-            # A push landed while this poll was in flight, so it already holds
-            # newer readings than the response we just received. The next poll
-            # picks up anything this one would have added.
-            return self.data
-
-        data = {sensor["id"]: sensor for sensor in sensors if sensor.get("id")}
-
-        # Plants with no sensor get their own device so the user can see the
-        # plant exists and knows to attach a sensor to it.
-        for plant in plants:
-            if plant.get("sensor") or not plant.get("id"):
-                continue
-            data[f"{PLANT_KEY_PREFIX}{plant['id']}"] = {
-                "id": plant["id"],
-                "identifier": None,
-                "name": plant.get("name"),
-                "isOnline": False,
-                "isPaired": False,
-                "isPlantOnly": True,
-                "batteryPercentage": None,
-                "lastDataReceived": None,
-                "plant": {
+            # Plants with no sensor get their own device so the user can see the
+            # plant exists and knows to attach a sensor to it.
+            for plant in plants:
+                if plant.get("sensor") or not plant.get("id"):
+                    continue
+                data[f"{PLANT_KEY_PREFIX}{plant['id']}"] = {
                     "id": plant["id"],
+                    "identifier": None,
                     "name": plant.get("name"),
-                    "imageUrl": plant.get("imageUrl"),
-                    "environment": plant.get("environment"),
-                    "species": plant.get("species"),
-                    "commonNames": plant.get("commonNames") or [],
-                },
-                "health": plant.get("health"),
-                "readings": None,
-            }
+                    "isOnline": False,
+                    "isPaired": False,
+                    "isPlantOnly": True,
+                    "batteryPercentage": None,
+                    "lastDataReceived": None,
+                    "plant": {
+                        "id": plant["id"],
+                        "name": plant.get("name"),
+                        "imageUrl": plant.get("imageUrl"),
+                        "environment": plant.get("environment"),
+                        "species": plant.get("species"),
+                        "commonNames": plant.get("commonNames") or [],
+                    },
+                    "health": plant.get("health"),
+                    "readings": None,
+                }
 
-        # A sensor with no plant is equally unpaired: it cannot be scored
-        # against a species, so its readings are not presented either.
-        for sensor in sensors:
-            if sensor.get("id") and not sensor.get("plant"):
-                data[sensor["id"]]["isPaired"] = False
+            # A sensor with no plant is equally unpaired: it cannot be scored
+            # against a species, so its readings are not presented either.
+            for sensor in sensors:
+                if sensor.get("id") and not sensor.get("plant"):
+                    data[sensor["id"]]["isPaired"] = False
 
-        # The poll is authoritative for the full set, so anything missing here
-        # was deleted in the app. Webhook pushes carry a single sensor and are
-        # deliberately not used to infer removal.
-        self._async_purge_removed_devices(data)
-        self._async_sync_pairing_issues(data)
+            # The poll is authoritative for the full set, so anything missing here
+            # was deleted in the app. Webhook pushes carry a single sensor and are
+            # deliberately not used to infer removal.
+            self._async_purge_removed_devices(data)
+            self._async_sync_pairing_issues(data)
 
-        return data
+            return data
 
     @callback
     def async_sync_devices(self) -> None:
@@ -251,24 +246,23 @@ class SmartyPlantsCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             # Removing the device takes its entities with it.
             registry.async_remove_device(device.id)
 
-    @callback
-    def async_remove_sensor(self, sensor_id: str) -> None:
+    async def async_remove_sensor(self, sensor_id: str) -> None:
         """Drop a sensor that was deleted in the app.
 
         Optional fast path for the sensor_removed push event. The poll reaches
         the same result on its own, so nothing breaks if the backend never
         sends it.
         """
-        if sensor_id not in (self.data or {}):
-            return
+        async with self._lock:
+            if sensor_id not in (self.data or {}):
+                return
 
-        data = dict(self.data)
-        del data[sensor_id]
+            data = dict(self.data)
+            del data[sensor_id]
 
-        self._async_purge_removed_devices(data)
-        self._async_sync_pairing_issues(data)
-        self._push_revision += 1
-        self.async_set_updated_data(data)
+            self._async_purge_removed_devices(data)
+            self._async_sync_pairing_issues(data)
+            self.async_set_updated_data(data)
 
     @callback
     def _async_sync_pairing_issues(self, data: dict[str, dict[str, Any]]) -> None:
@@ -316,57 +310,58 @@ class SmartyPlantsCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             ):
                 ir.async_delete_issue(self.hass, DOMAIN, issue.issue_id)
 
-    @callback
-    def async_apply_webhook_payload(self, payload: dict[str, Any]) -> None:
+    async def async_apply_webhook_payload(self, payload: dict[str, Any]) -> None:
         """Merge a pushed sensor_update into the cached data.
 
         The webhook payload is flatter than the REST response and omits the
         species details, so it is merged onto the existing entry rather than
         replacing it.
         """
-        pushed = payload.get("sensor") or {}
-        sensor_id = pushed.get("id")
-        if not sensor_id:
-            _LOGGER.debug("Ignoring webhook payload without a sensor id")
-            return
+        async with self._lock:
+            pushed = payload.get("sensor") or {}
+            sensor_id = pushed.get("id")
+            if not sensor_id:
+                _LOGGER.debug("Ignoring webhook payload without a sensor id")
+                return
 
-        data = dict(self.data or {})
-        merged = dict(data.get(sensor_id, {}))
-        existing_plant = merged.get("plant") or {}
+            data = dict(self.data or {})
+            merged = dict(data.get(sensor_id, {}))
+            existing_plant = merged.get("plant") or {}
 
-        # A push that omits its timestamp must not blank the one we already
-        # have, or every entity would immediately read as stale.
-        timestamp = payload.get("timestamp") or merged.get("lastDataReceived")
+            # A push that omits its timestamp must not blank the one we already
+            # have, or every entity would immediately read as stale.
+            timestamp = payload.get("timestamp") or merged.get("lastDataReceived")
 
-        # Only carry a plant when one is actually known. Fabricating a dict of
-        # None values would make an unpaired sensor look paired.
-        plant_id = pushed.get("plantId") or existing_plant.get("id")
-        plant_name = pushed.get("plantName") or existing_plant.get("name")
-        plant = (
-            {**existing_plant, "id": plant_id, "name": plant_name}
-            if plant_id or plant_name
-            else None
-        )
+            # Only carry a plant when one is actually known. Fabricating a dict of
+            # None values would make an unpaired sensor look paired.
+            plant_id = pushed.get("plantId") or existing_plant.get("id")
+            plant_name = pushed.get("plantName") or existing_plant.get("name")
+            plant = (
+                {**existing_plant, "id": plant_id, "name": plant_name}
+                if plant_id or plant_name
+                else None
+            )
 
-        merged.update(
-            {
-                "id": sensor_id,
-                "identifier": pushed.get("identifier", merged.get("identifier")),
-                "name": pushed.get("name", merged.get("name")),
-                "isOnline": pushed.get("isOnline", merged.get("isOnline", True)),
-                "batteryPercentage": pushed.get(
-                    "batteryPercentage", merged.get("batteryPercentage")
-                ),
-                "lastDataReceived": timestamp,
-                # Shapes are checked before they land: a malformed push must
-                # not poison the cache the entities read from.
-                "health": _dict_or(payload.get("health"), merged.get("health")),
-                "readings": _dict_or(payload.get("readings"), merged.get("readings")),
-                "plant": plant,
-                "isPaired": plant is not None,
-            }
-        )
+            merged.update(
+                {
+                    "id": sensor_id,
+                    "identifier": pushed.get("identifier", merged.get("identifier")),
+                    "name": pushed.get("name", merged.get("name")),
+                    "isOnline": pushed.get("isOnline", merged.get("isOnline", True)),
+                    "batteryPercentage": pushed.get(
+                        "batteryPercentage", merged.get("batteryPercentage")
+                    ),
+                    "lastDataReceived": timestamp,
+                    # Shapes are checked before they land: a malformed push must
+                    # not poison the cache the entities read from.
+                    "health": _dict_or(payload.get("health"), merged.get("health")),
+                    "readings": _dict_or(
+                        payload.get("readings"), merged.get("readings")
+                    ),
+                    "plant": plant,
+                    "isPaired": plant is not None,
+                }
+            )
 
-        data[sensor_id] = merged
-        self._push_revision += 1
-        self.async_set_updated_data(data)
+            data[sensor_id] = merged
+            self.async_set_updated_data(data)
