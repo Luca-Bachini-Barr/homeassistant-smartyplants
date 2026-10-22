@@ -65,6 +65,21 @@ def _reading(sensor: dict[str, Any], key: str) -> float | None:
     return _numeric(block.get("value"))
 
 
+def _classification(sensor: dict[str, Any], name: str) -> dict[str, Any]:
+    """Return one category of the health breakdown, or an empty dict."""
+    classifications = (sensor.get("health") or {}).get("classifications")
+    if not isinstance(classifications, list):
+        return {}
+    return next(
+        (
+            item
+            for item in classifications
+            if isinstance(item, dict) and item.get("classification") == name
+        ),
+        {},
+    )
+
+
 @dataclass(frozen=True, kw_only=True)
 class SmartyPlantsSensorDescription(SensorEntityDescription):
     """Describes one SmartyPlants sensor entity."""
@@ -77,6 +92,21 @@ class SmartyPlantsSensorDescription(SensorEntityDescription):
     stale_sensitive: bool = True
     # Skipped for plants that have no sensor, where the metric has no meaning.
     requires_sensor: bool = True
+    # Health category backing this entity, whose label goes in its attributes.
+    classification: str | None = None
+
+
+def _health_description(name: str) -> SmartyPlantsSensorDescription:
+    """Describe the score for one category of the health breakdown."""
+    return SmartyPlantsSensorDescription(
+        key=f"{name}_health",
+        translation_key=f"{name}_health",
+        suggested_display_precision=0,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=PERCENTAGE,
+        classification=name,
+        value_fn=lambda sensor: _numeric(_classification(sensor, name).get("score")),
+    )
 
 
 SENSOR_TYPES: tuple[SmartyPlantsSensorDescription, ...] = (
@@ -136,6 +166,11 @@ SENSOR_TYPES: tuple[SmartyPlantsSensorDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         value_fn=lambda sensor: _numeric((sensor.get("health") or {}).get("score")),
     ),
+    # The health score is built from these, so they say why a plant needs
+    # attention.
+    _health_description("environment"),
+    _health_description("soil"),
+    _health_description("light"),
     SmartyPlantsSensorDescription(
         key="fertilise_days",
         translation_key="fertilise_days",
@@ -259,6 +294,15 @@ class SmartyPlantsSensor(SmartyPlantsEntity, SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any] | None:
         """Expose the optimal band and status so users can build alerts on it."""
         description = self.entity_description
+        if description.classification is not None:
+            category = _classification(self.sensor, description.classification)
+            if not category:
+                return None
+            return {
+                "status": category.get("statusLabel") or None,
+                "is_healthy": category.get("isHealthy"),
+            }
+
         block = self.readings.get(description.readings_key or description.key)
         if not isinstance(block, dict):
             return None

@@ -64,6 +64,15 @@
       "health_score": {
         "name": "Health score"
       },
+      "environment_health": {
+        "name": "Environment health"
+      },
+      "soil_health": {
+        "name": "Soil health"
+      },
+      "light_health": {
+        "name": "Light health"
+      },
       "fertilise_days": {
         "name": "Fertilise in"
       },

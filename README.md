@@ -62,6 +62,10 @@ Per plant: temperature, humidity, soil moisture, illuminance, light quality,
 health score, fertilise countdown, and a status entity. Plus diagnostics —
 battery, last reported, connectivity, and whether the readings have gone stale.
 
+The health score is also broken down into environment, soil and light health,
+each with the app's label (such as "Needs attention") in its `status`
+attribute, so you can see which part of the plant's care is behind the score.
+
 ### Status
 
 | State | Meaning |

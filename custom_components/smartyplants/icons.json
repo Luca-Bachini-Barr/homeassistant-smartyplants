@@ -10,6 +10,15 @@
       "health_score": {
         "default": "mdi:heart-pulse"
       },
+      "environment_health": {
+        "default": "mdi:thermometer-water"
+      },
+      "soil_health": {
+        "default": "mdi:sprout"
+      },
+      "light_health": {
+        "default": "mdi:weather-sunny-alert"
+      },
       "fertilise_days": {
         "default": "mdi:nutrition"
       },
